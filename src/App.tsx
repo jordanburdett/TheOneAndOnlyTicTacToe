@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import logo from './logo.svg';
+import NameForm from "./components/NameForm/NameForm";
+import Game from "./components/Game/Game"
 import './App.css';
 import { io } from 'socket.io-client'
 const socket = io('http://localhost:3000');
@@ -7,26 +8,19 @@ const socket = io('http://localhost:3000');
 function App() {
 
   const [serverMessage, setServerMessage] = useState("");
+  const [hasName, setHasName] = useState(false);
 
   useEffect(() => {
     socket.on('alert message', (message: string) => {
       console.log(message);
       setServerMessage(message);
     });
-
-    return () => {
-      socket.emit("disonnecting");
-    }
   }, []);
 
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          {serverMessage}
-        </p>
-      </header>
+    <div>
+      {!hasName && <NameForm socket={socket}/>}
+      {hasName && <Game />}
     </div>
   );
 }
