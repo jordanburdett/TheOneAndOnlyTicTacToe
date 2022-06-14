@@ -9,6 +9,7 @@ function App() {
 
   const [serverMessage, setServerMessage] = useState("");
   const [hasName, setHasName] = useState(false);
+  const [name, setName] = useState("")
 
   useEffect(() => {
     socket.on('alert message', (message: string) => {
@@ -17,9 +18,14 @@ function App() {
     });
   }, []);
 
+  const nameAssigned = (name: string) => {
+    setName(name);
+    setHasName(true);
+  }
+
   return (
     <div>
-      {!hasName && <NameForm socket={socket}/>}
+      {!hasName && <NameForm socket={socket} nameAssigned={nameAssigned}/>}
       {hasName && <Game />}
     </div>
   );
