@@ -26,7 +26,7 @@ function App() {
   return (
     <div>
       {!hasName && <NameForm socket={socket} nameAssigned={nameAssigned}/>}
-      {hasName && <Game />}
+      {hasName && <Game socket={socket}/>}
     </div>
   );
 }
