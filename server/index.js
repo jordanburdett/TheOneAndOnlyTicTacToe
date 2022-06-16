@@ -12,6 +12,7 @@ const uri = "mongodb://jordan.burdett.us:27017"
 const client = new MongoClient(uri);
 const { JSDOM } = require("jsdom");
 const { window } = new JSDOM();
+const { startGameLoop } = require("./logic/gameloop");
 
 app.get('/', (req, res) => {
   res.send('<h1>Hello world</h1>');
@@ -32,9 +33,9 @@ app.get('/databasetest', async (req, res) => {
     }
     const endTime = window.performance.now();
 
-    res.send(`<h1>${(endTime - startTime)/1000}</h1>`);
+    res.send(`<h1>${(endTime - startTime) / 1000}</h1>`);
 
-   
+
   }
   catch (error) {
     console.error("we had some kind of error", error);
@@ -61,22 +62,22 @@ io.on('connection', (socket) => {
 
     await client.connect();
 
-    const activeName = await client.db("TicTacToe").collection("ActiveNames").findOne({socketId: socket.id})
+    const activeName = await client.db("TicTacToe").collection("ActiveNames").findOne({ socketId: socket.id })
 
     if (activeName === null) {
       console.log("user with a socketId of : " + socket.id + "no name was assigned");
     }
     else {
       console.log("user with a socketId of : " + socket.id + " disconnected, name: " + activeName.name);
-      await client.db("TicTacToe").collection("ActiveNames").deleteOne({socketId: socket.id})
+      await client.db("TicTacToe").collection("ActiveNames").deleteOne({ socketId: socket.id })
     }
-  })
+  });
 
   socket.on("insert test name", async (name) => {
     await client.connect();
     await client.db("TicTacToe").collection("ActiveNames").insertOne({ name: name, socketId: socket.id, timeStamp: Date.now() });
     console.log("name inserted");
-  })
+  });
 
   socket.on("assign name", async (name) => {
     // check for a valid name
@@ -89,11 +90,11 @@ io.on('connection', (socket) => {
     await client.connect();
 
     // check if the current socket.id is already assigned a name
-    const checkNameResponse = await client.db("TicTacToe").collection("ActiveNames").findOne({socketId: socket.id});
-    
+    const checkNameResponse = await client.db("TicTacToe").collection("ActiveNames").findOne({ socketId: socket.id });
+
     if (checkNameResponse != null) {
       // the user already has a name assigned to them. Change it.
-      const res = await client.db("TicTacToe").collection("ActiveNames").updateOne({socketId: socket.id}, {$set: {name: name}});
+      const res = await client.db("TicTacToe").collection("ActiveNames").updateOne({ socketId: socket.id }, { $set: { name: name } });
       console.log("response after updating name", res);
 
       socket.emit("name received", { success: true, name: name, message: "Successfully added name \'" + name + "\' for socket id" });
@@ -101,11 +102,35 @@ io.on('connection', (socket) => {
     }
 
     // add the new name to the active name database
-    await client.db("TicTacToe").collection("ActiveNames").insertOne({socketId: socket.id, name: name, timeStamp: Date.now()});
+    await client.db("TicTacToe").collection("ActiveNames").insertOne({ socketId: socket.id, name: name, timeStamp: Date.now() });
     socket.emit("name received", { success: true, name: name, message: "Successfully added name \'" + name + "\' for socket id" });
-  })
+  });
+
+  /****
+   * Gameplay
+   */
+
+  // receive users play -- emit to everyone a new board
+
+  /**** 
+   * Queue
+   */
+
+  // receive request to join queue
+
+  // receive request to leave queue
+
+  // receive request to change queue
+
+  
+  
 
 });
+
+/******
+   * setup game loop
+   */
+ startGameLoop(io);
 
 server.listen(3000, () => {
   console.log('listening on *:3000');
