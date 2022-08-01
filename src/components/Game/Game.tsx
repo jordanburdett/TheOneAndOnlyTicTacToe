@@ -3,8 +3,6 @@ import { Socket } from 'socket.io-client'
 import GameBoard from '../../../common/Interfaces/GameBoard'
 import styled from 'styled-components'
 
-
-
 const Main = styled("div")`
   display: flex;
   flex-wrap: wrap;
@@ -124,7 +122,9 @@ const Game = (props: Props) => {
     player1SocketId: "",
     player2: "Test Player 2",
     player2SocketId: "",
-    board: ["", "", "", "", "", "", "", "", ""],
+    board: ["", "", "", 
+            "", "", "", 
+            "", "", ""],
     currentTurnSocketId: "",
     gameHasStarted: false,
     hasWinner: false,

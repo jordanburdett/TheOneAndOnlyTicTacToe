@@ -58,6 +58,7 @@ io.on('connection', (socket) => {
 
   socket.emit("alert message", "Welcome to TicTacToe. In order to view or play the game please enter a name.");
 
+  // When a user disconnects --- this is called when the browser is closed.
   socket.on("disconnecting", async () => {
 
     await client.connect();
@@ -65,7 +66,7 @@ io.on('connection', (socket) => {
     const activeName = await client.db("TicTacToe").collection("ActiveNames").findOne({ socketId: socket.id })
 
     if (activeName === null) {
-      console.log("user with a socketId of : " + socket.id + "no name was assigned");
+      console.log("user with a socketId of : " + socket.id + " no name was assigned");
     }
     else {
       console.log("user with a socketId of : " + socket.id + " disconnected, name: " + activeName.name);
@@ -73,11 +74,11 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on("insert test name", async (name) => {
-    await client.connect();
-    await client.db("TicTacToe").collection("ActiveNames").insertOne({ name: name, socketId: socket.id, timeStamp: Date.now() });
-    console.log("name inserted");
-  });
+  // socket.on("insert test name", async (name) => {
+  //   await client.connect();
+  //   await client.db("TicTacToe").collection("ActiveNames").insertOne({ name: name, socketId: socket.id, timeStamp: Date.now() });
+  //   console.log("name inserted");
+  // });
 
   socket.on("assign name", async (name) => {
     // check for a valid name
@@ -95,9 +96,16 @@ io.on('connection', (socket) => {
     if (checkNameResponse != null) {
       // the user already has a name assigned to them. Change it.
       const res = await client.db("TicTacToe").collection("ActiveNames").updateOne({ socketId: socket.id }, { $set: { name: name } });
-      console.log("response after updating name", res);
-
+      
       socket.emit("name received", { success: true, name: name, message: "Successfully added name \'" + name + "\' for socket id" });
+      return;
+    }
+
+    const checkNameTaken = await client.db("TicTacToe").collection("ActiveNames").findOne({ name: name });
+
+    if (checkNameTaken !== null) {
+      // The Name has already been taken by another user.
+      socket.emit("name received", { success: false, name: name, message: "The name is already in use." });
       return;
     }
 
@@ -126,11 +134,6 @@ io.on('connection', (socket) => {
   
 
 });
-
-/******
-   * setup game loop
-   */
- startGameLoop(io);
 
 server.listen(3000, () => {
   console.log('listening on *:3000');
