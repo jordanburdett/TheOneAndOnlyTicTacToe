@@ -1,7 +1,29 @@
 import React, { useEffect, useState } from 'react'
 import { Socket } from 'socket.io-client'
 import GameBoard from '../../../common/Interfaces/GameBoard'
+import Queues from '../../../common/Interfaces/Queue'
+import QueueList from './QueueList'
 import styled from 'styled-components'
+
+
+var gameBoardDefault: GameBoard = {
+  player1: "Test Player 1",
+  player1SocketId: "",
+  player2: "Test Player 2",
+  player2SocketId: "",
+  board: ["", "", "", 
+          "", "", "", 
+          "", "", ""],
+  currentTurnSocketId: "",
+  gameHasStarted: false,
+  hasWinner: false,
+  winner: "",
+};
+
+var queueDefault: Queues = {
+  XQueue: [],
+  YQueue: []
+};
 
 const Main = styled("div")`
   display: flex;
@@ -111,38 +133,42 @@ const HiddenMessages = styled("h3")`
   margin: 0;
 `;
 
+const AddToQueueButton = styled("button")`
+
+`;
+
 type Props = {
   socket: Socket
 }
 
 const Game = (props: Props) => {
 
-  var gameBoardDefault: GameBoard = {
-    player1: "Test Player 1",
-    player1SocketId: "",
-    player2: "Test Player 2",
-    player2SocketId: "",
-    board: ["", "", "", 
-            "", "", "", 
-            "", "", ""],
-    currentTurnSocketId: "",
-    gameHasStarted: false,
-    hasWinner: false,
-    winner: "",
-  };
-
-  const [gameBoard, setGameBoard] = useState(gameBoardDefault)
-
+  const [gameBoard, setGameBoard] = useState(gameBoardDefault);
+  const [queues, setQueues] = useState(queueDefault);
   const [errorMessage, setErrorMessage] = useState({ msg: "this is a test", isShowingMessage: false });
 
   useEffect(() => {
+
+    // get the game board
+
+    // get the queues
+    props.socket.emit("queue request queues")
+
+
+
     // game board update
     props.socket.on("game board update", (gameBoard: GameBoard) => {
       setGameBoard((prev) => gameBoard);
     })
 
     // queue update
+    props.socket.on("queue update", (queues: Queues) => {
 
+      console.log("We got a queue update", queues);
+
+
+      setQueues((prev) => queues);
+    })
 
   }, [])
 
@@ -177,6 +203,10 @@ const Game = (props: Props) => {
 
   }
 
+  const onXQueueClick = () => {
+    props.socket.emit("queue join x");
+  }
+
   return (
     <Main>
       <Header>
@@ -197,6 +227,8 @@ const Game = (props: Props) => {
           <h3>
             {gameBoard.player1}
           </h3>
+          <QueueList queue={queues.XQueue}/>
+          <AddToQueueButton onClick={onXQueueClick}>Get In Line</AddToQueueButton>
         </SideBarLeft>
         <Board>
           <GameBoardRow>

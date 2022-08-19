@@ -7,12 +7,12 @@ const io = require("socket.io")(server, {
     origin: "http://localhost:3001",
   },
 });
-const { MongoClient } = require("mongodb");
-const uri = "mongodb://jordan.burdett.us:27017"
-const client = new MongoClient(uri);
+const {client} = require('./logic/databaseConnection');
 const { JSDOM } = require("jsdom");
 const { window } = new JSDOM();
 const { startGameLoop } = require("./logic/gameloop");
+const { checkForSocketInQueue } = require("./logic/Helpers");
+const { addSocketIdToQueueX, getQueues } = require('./Controllers/DatabaseController');
 
 app.get('/', (req, res) => {
   res.send('<h1>Hello world</h1>');
@@ -58,7 +58,10 @@ io.on('connection', (socket) => {
 
   socket.emit("alert message", "Welcome to TicTacToe. In order to view or play the game please enter a name.");
 
-  // When a user disconnects --- this is called when the browser is closed.
+  /**************************************************************************
+   * ON "disconnecting"
+   * This is automatically called when the user disconnects or closes the browser window
+   */
   socket.on("disconnecting", async () => {
 
     await client.connect();
@@ -80,6 +83,9 @@ io.on('connection', (socket) => {
   //   console.log("name inserted");
   // });
 
+  /**************************************************************************
+   * ON "assign Name"
+   */
   socket.on("assign name", async (name) => {
     // check for a valid name
     if (name === null || name === "") {
@@ -125,10 +131,60 @@ io.on('connection', (socket) => {
    */
 
   // receive request to join queue
+  socket.on("queue join x", async () => {
+      console.log("someone is joining the x queue");
+      console.log(socket.id);
 
-  // receive request to leave queue
+      // check if socketId is part of a queue
+      const queueStatus = await checkForSocketInQueue(socket.id);
 
-  // receive request to change queue
+      if (queueStatus === "no") {
+        // socketId and name to queue
+        const newQueues = await addSocketIdToQueueX(socket.id);
+        // emmit the new queues
+        io.emit("queue update", newQueues);
+      }
+      else if (queueStatus === "x") {
+
+        // dont do anything just return
+      }
+      else if (queueStatus === "y") {
+        // remove the queue from y
+
+        // add the queue to x
+
+        // emmit the new queues
+      }
+  });
+
+  socket.on("queue join y", async () => {
+    console.log("someone is joining the y queue");
+    console.log(socket.id);
+
+    // check if socketId is part of a queue
+    const queueStatus = await checkForSocketInQueue(socket.id);
+
+    if (queueStatus === "no") {
+      // socketId and name to queue
+
+      // emmit the new queues
+    }
+    else if (queueStatus === "x") {
+      // remove the queue from x
+
+      // add the y to the queue
+
+      // emmit the new queues
+      
+    }
+    else if (queueStatus === "y") {
+      // dont do anything just return
+    }
+});
+
+socket.on("queue request queues", async () => {
+  socket.emit("queue update", await getQueues());
+})
 
   
   
