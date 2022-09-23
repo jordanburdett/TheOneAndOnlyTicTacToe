@@ -146,6 +146,7 @@ const Game = (props: Props) => {
   const [gameBoard, setGameBoard] = useState(gameBoardDefault);
   const [queues, setQueues] = useState(queueDefault);
   const [errorMessage, setErrorMessage] = useState({ msg: "this is a test", isShowingMessage: false });
+  const [QueueSelection, setQueueSelection] = useState("no");
 
   useEffect(() => {
 
@@ -163,13 +164,22 @@ const Game = (props: Props) => {
 
     // queue update
     props.socket.on("queue update", (queues: Queues) => {
-
-      console.log("We got a queue update", queues);
-
-
       setQueues((prev) => queues);
-    })
 
+      // request the server to start the game only if we are 1st in the queue and no player is assigned to game board
+      if (QueueSelection === "x") {
+        if (props.socket.id === queues.XQueue[0].socketId && gameBoard.gameHasStarted === false) {
+          props.socket.emit("start game");
+        }
+      }
+      else if (QueueSelection === "y") {
+        if (props.socket.id === queues.YQueue[0].socketId && gameBoard.gameHasStarted === false) {
+          props.socket.emit("start game");
+        }
+      }
+
+    })  
+ 
   }, [])
 
   // game functionality
@@ -205,6 +215,12 @@ const Game = (props: Props) => {
 
   const onXQueueClick = () => {
     props.socket.emit("queue join x");
+    setQueueSelection("x");
+  }
+
+  const onYQueueClick = () => {
+    props.socket.emit("queue join y");
+    setQueueSelection("y");
   }
 
   return (
@@ -252,6 +268,8 @@ const Game = (props: Props) => {
           <h3>
             {gameBoard.player2}
           </h3>
+          <QueueList queue={queues.YQueue}/>
+          <AddToQueueButton onClick={onYQueueClick}>Get In Line</AddToQueueButton>
         </SideBarRight>
       </MainContentWrapper>
       <Footer>

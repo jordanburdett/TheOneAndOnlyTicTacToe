@@ -19,4 +19,3 @@ exports.checkForSocketInQueue = async (socketId) => {
 
     return "no";
 }
-

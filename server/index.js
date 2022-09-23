@@ -12,7 +12,7 @@ const { JSDOM } = require("jsdom");
 const { window } = new JSDOM();
 const { startGameLoop } = require("./logic/gameloop");
 const { checkForSocketInQueue } = require("./logic/Helpers");
-const { addSocketIdToQueueX, getQueues } = require('./Controllers/DatabaseController');
+const { addSocketIdToQueueX, getQueues, removeSocketIdFromY, addSocketIdToQueueY, removeSocketIdFromX, getGameBoard, databaseCleanup } = require('./Controllers/DatabaseController');
 
 app.get('/', (req, res) => {
   res.send('<h1>Hello world</h1>');
@@ -67,6 +67,24 @@ io.on('connection', (socket) => {
     await client.connect();
 
     const activeName = await client.db("TicTacToe").collection("ActiveNames").findOne({ socketId: socket.id })
+
+    // find what queue we are in
+    const queueStatus = await checkForSocketInQueue(socket.id);
+
+    // remove from correct queue
+    if (queueStatus === "x") {
+      await removeSocketIdFromX(socket.id);
+
+      const queues = await getQueues();
+
+      io.emit("queue update", queues);
+    }
+    else if (queueStatus === "y") {
+      await removeSocketIdFromY(socket.id);
+      const queues = await getQueues();
+
+      io.emit("queue update", queues);
+    }
 
     if (activeName === null) {
       console.log("user with a socketId of : " + socket.id + " no name was assigned");
@@ -123,13 +141,19 @@ io.on('connection', (socket) => {
   /****
    * Gameplay
    */
+  socket.on("start game", async () => {
+    console.log("game has been started");
 
+    // check for active game
+    let gameBoard = await getGameBoard();
+    console.log(gameBoard);
+
+  })
   // receive users play -- emit to everyone a new board
 
   /**** 
    * Queue
    */
-
   // receive request to join queue
   socket.on("queue join x", async () => {
       console.log("someone is joining the x queue");
@@ -141,19 +165,24 @@ io.on('connection', (socket) => {
       if (queueStatus === "no") {
         // socketId and name to queue
         const newQueues = await addSocketIdToQueueX(socket.id);
+
         // emmit the new queues
         io.emit("queue update", newQueues);
       }
       else if (queueStatus === "x") {
 
         // dont do anything just return
+        return;
       }
       else if (queueStatus === "y") {
         // remove the queue from y
+        let success = removeSocketIdFromY(socket.id);
 
         // add the queue to x
+        const newQueues = await addSocketIdToQueueX(socket.id);
 
         // emmit the new queues
+        io.emit("queue update", newQueues);
       }
   });
 
@@ -166,19 +195,25 @@ io.on('connection', (socket) => {
 
     if (queueStatus === "no") {
       // socketId and name to queue
+      const newQueues = await addSocketIdToQueueY(socket.id);
 
       // emmit the new queues
+      io.emit("queue update", newQueues);
     }
     else if (queueStatus === "x") {
       // remove the queue from x
+      let success = removeSocketIdFromX(socket.id);
 
       // add the y to the queue
+      const newQueues = await addSocketIdToQueueY(socket.id);
 
       // emmit the new queues
+      io.emit("queue update", newQueues);
       
     }
     else if (queueStatus === "y") {
       // dont do anything just return
+      return;
     }
 });
 
@@ -193,4 +228,5 @@ socket.on("queue request queues", async () => {
 
 server.listen(3000, () => {
   console.log('listening on *:3000');
+  databaseCleanup();
 });
