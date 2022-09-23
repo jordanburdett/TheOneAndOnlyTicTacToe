@@ -155,8 +155,6 @@ const Game = (props: Props) => {
     // get the queues
     props.socket.emit("queue request queues")
 
-
-
     // game board update
     props.socket.on("game board update", (gameBoard: GameBoard) => {
       setGameBoard((prev) => gameBoard);
@@ -165,22 +163,35 @@ const Game = (props: Props) => {
     // queue update
     props.socket.on("queue update", (queues: Queues) => {
       setQueues((prev) => queues);
-
-      // request the server to start the game only if we are 1st in the queue and no player is assigned to game board
-      if (QueueSelection === "x") {
-        if (props.socket.id === queues.XQueue[0].socketId && gameBoard.gameHasStarted === false) {
-          props.socket.emit("start game");
-        }
-      }
-      else if (QueueSelection === "y") {
-        if (props.socket.id === queues.YQueue[0].socketId && gameBoard.gameHasStarted === false) {
-          props.socket.emit("start game");
-        }
-      }
-
     })  
  
   }, [])
+
+  useEffect(() => {
+     // request the server to start the game only if we are 1st in the queue and no player is assigned to game board
+     if (QueueSelection === "x") {
+      console.log("attemping to start game on x", props.socket.id, queues.XQueue[0]?.socketId, gameBoard.gameHasStarted);
+      if (props.socket.id === queues.XQueue[0]?.socketId && gameBoard.gameHasStarted === false) {
+        props.socket.emit("start game");
+      }
+    }
+    else if (QueueSelection === "y") {
+      if (props.socket.id === queues.YQueue[0]?.socketId && gameBoard.gameHasStarted === false) {
+        props.socket.emit("start game");
+      }
+    }
+  }, [queues])
+  
+
+  useEffect(() => {
+    if (QueueSelection === "y") {
+      props.socket.emit("queue join y");
+    }
+    else if (QueueSelection === "x") {
+      props.socket.emit("queue join x");
+    }
+  }, [QueueSelection])
+  
 
   // game functionality
 
@@ -214,13 +225,13 @@ const Game = (props: Props) => {
   }
 
   const onXQueueClick = () => {
-    props.socket.emit("queue join x");
     setQueueSelection("x");
+    
+    
   }
 
   const onYQueueClick = () => {
-    props.socket.emit("queue join y");
-    setQueueSelection("y");
+    setQueueSelection("y");    
   }
 
   return (
@@ -244,7 +255,7 @@ const Game = (props: Props) => {
             {gameBoard.player1}
           </h3>
           <QueueList queue={queues.XQueue}/>
-          <AddToQueueButton onClick={onXQueueClick}>Get In Line</AddToQueueButton>
+          <AddToQueueButton onClick={onXQueueClick} hidden={props?.socket.id === gameBoard.player1SocketId || props?.socket.id === gameBoard?.player2SocketId}>Get In Line</AddToQueueButton>
         </SideBarLeft>
         <Board>
           <GameBoardRow>
@@ -269,7 +280,7 @@ const Game = (props: Props) => {
             {gameBoard.player2}
           </h3>
           <QueueList queue={queues.YQueue}/>
-          <AddToQueueButton onClick={onYQueueClick}>Get In Line</AddToQueueButton>
+          <AddToQueueButton onClick={onYQueueClick} hidden={props?.socket.id === gameBoard.player1SocketId || props?.socket.id === gameBoard?.player2SocketId}>Get In Line</AddToQueueButton>
         </SideBarRight>
       </MainContentWrapper>
       <Footer>

@@ -12,7 +12,7 @@ const { JSDOM } = require("jsdom");
 const { window } = new JSDOM();
 const { startGameLoop } = require("./logic/gameloop");
 const { checkForSocketInQueue } = require("./logic/Helpers");
-const { addSocketIdToQueueX, getQueues, removeSocketIdFromY, addSocketIdToQueueY, removeSocketIdFromX, getGameBoard, databaseCleanup } = require('./Controllers/DatabaseController');
+const { addSocketIdToQueueX, getQueues, removeSocketIdFromY, addSocketIdToQueueY, removeSocketIdFromX, getGameBoard, databaseCleanup, updateGameBoard } = require('./Controllers/DatabaseController');
 
 app.get('/', (req, res) => {
   res.send('<h1>Hello world</h1>');
@@ -146,6 +146,57 @@ io.on('connection', (socket) => {
 
     // check for active game
     let gameBoard = await getGameBoard();
+
+    if (gameBoard.gameHasStarted) return;
+
+    let queues = await getQueues();
+
+
+    console.log("queues.XQueue: " + queues.XQueue);
+    if (!gameBoard.player1 && queues.XQueue[0]?.name) {
+      
+      gameBoard.player1 = queues.XQueue[0].name;
+      gameBoard.player1SocketId = queues.XQueue[0].socketId;
+      
+    }
+    else {
+      console.log("not ready to start the game");
+    }
+
+    if (!gameBoard.player2 && queues.YQueue[0]?.name) {
+      gameBoard.player2 = queues.YQueue[0].name;
+      gameBoard.player2SocketId = queues.YQueue[0].socketId;
+    }
+    else {
+      console.log("not ready to start the game");
+    }
+
+    if (gameBoard.player1 && gameBoard.player2) {
+      gameBoard.gameHasStarted = true;
+      
+      // pick one at random to be the first to go
+      const firstPlayer = Math.floor(Math.random() * 2);
+
+      if (firstPlayer === 0) {
+        gameBoard.currentTurnSocketId = gameBoard.player1SocketId;
+      }
+      else if (firstPlayer === 1) {
+        gameBoard.currentTurnSocketId = gameBoard.player2SocketId;
+      }
+
+      // remove from the queues player1 X player2 Y
+      await removeSocketIdFromX(gameBoard.player1SocketId);
+      await removeSocketIdFromY(gameBoard.player2SocketId);
+
+      io.emit("queue update", await getQueues());
+
+    }
+
+    await updateGameBoard(gameBoard);
+    console.log("emitting this game board", gameBoard);
+    io.emit("game board update", gameBoard);
+
+
     console.log(gameBoard);
 
   })
