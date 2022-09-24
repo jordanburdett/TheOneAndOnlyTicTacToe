@@ -86,14 +86,14 @@ exports.getGameBoard = async () => {
     let result = await client.db("TicTacToe").collection("GameBoard").findOne({});
     
     if (result === undefined || result === null) {
-        await insertGameBoard();
+        await this.insertGameBoard();
         result = await client.db("TicTacToe").collection("GameBoard").findOne({});
     }
 
     return result;
 }
 
-async function insertGameBoard() {
+exports.insertGameBoard = async () => {
     await client.connect();
     // delete all
     let result = await client.db("TicTacToe").collection("GameBoard").deleteMany({});
@@ -128,10 +128,15 @@ async function insertGameBoard() {
 }
 
 exports.updateGameBoard = async (gameBoard) => {
-    console.log("updateing gameboard in database with", gameBoard);
+    console.log("updating gameboard in database with", gameBoard);
     await client.connect();
 
-    let result = await client.db("TicTacToe").collection("GameBoard").findOneAndReplace({}, gameBoard);
+    result = await client.db("TicTacToe").collection("GameBoard").findOneAndUpdate({}, 
+        {$set: {player1: gameBoard.player1, player1SocketId: gameBoard.player1SocketId, 
+            player2: gameBoard.player2, player2SocketId: gameBoard.player2SocketId, 
+            board: gameBoard.board, currentTurnSocketId: gameBoard.currentBoardSocketId, 
+            gameHasStarted: gameBoard.gameHasStarted, hasWinner: gameBoard.hasWinner, 
+            winner: gameBoard.winner}});
 
     return result.ok;
 }

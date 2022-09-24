@@ -147,23 +147,29 @@ const Game = (props: Props) => {
   const [queues, setQueues] = useState(queueDefault);
   const [errorMessage, setErrorMessage] = useState({ msg: "this is a test", isShowingMessage: false });
   const [QueueSelection, setQueueSelection] = useState("no");
+  const [newGameCountDown, setNewGameCountDown] = useState(7);
 
   useEffect(() => {
 
     // get the game board
 
     // get the queues
-    props.socket.emit("queue request queues")
+    props.socket.emit("queue request queues");
 
     // game board update
     props.socket.on("game board update", (gameBoard: GameBoard) => {
+      console.log("new game board", gameBoard);
       setGameBoard((prev) => gameBoard);
-    })
+    });
 
     // queue update
     props.socket.on("queue update", (queues: Queues) => {
       setQueues((prev) => queues);
-    })  
+    });
+
+    props.socket.on("get new game countdown", (count: number) => {
+      setNewGameCountDown(count);
+    });
  
   }, [])
 
@@ -192,11 +198,16 @@ const Game = (props: Props) => {
     }
   }, [QueueSelection])
   
-
-  // game functionality
-
   // send turn
   const onSquareClicked = (squareIndex: number) => {
+    if (gameBoard.hasWinner) {
+      setErrorMessage({ msg: "The game is already over silly!", isShowingMessage: true });
+      setTimeout(() => {
+        setErrorMessage({ msg: "", isShowingMessage: false });
+      }, 5000)
+      return;
+    }
+    
     console.log("square Clicked", squareIndex);
     // check for turn
     if (props.socket.id !== gameBoard.currentTurnSocketId) {
@@ -219,15 +230,19 @@ const Game = (props: Props) => {
       return;
     }
 
+    setGameBoard((prev) => {
+      prev.board[squareIndex] = prev.currentTurnSocketId === prev.player1SocketId ? 'X' : 'O';
+      props.socket.emit("game board play", prev);
+      return prev;
+    });
+
     // if we can get this far lets send off our play
-    props.socket.emit("")
+    props.socket.emit("game board play", gameBoard);
 
   }
 
   const onXQueueClick = () => {
     setQueueSelection("x");
-    
-    
   }
 
   const onYQueueClick = () => {
@@ -258,20 +273,23 @@ const Game = (props: Props) => {
           <AddToQueueButton onClick={onXQueueClick} hidden={props?.socket.id === gameBoard.player1SocketId || props?.socket.id === gameBoard?.player2SocketId}>Get In Line</AddToQueueButton>
         </SideBarLeft>
         <Board>
+        {!gameBoard.hasWinner && <h2>Current Turn: {gameBoard.currentTurnSocketId === gameBoard.player1SocketId ? gameBoard.player1 : gameBoard.player2}</h2>}
+        {gameBoard.hasWinner && <><h2>Winner is: {gameBoard.winner === gameBoard.player1SocketId ? gameBoard.player1 : gameBoard.player2}</h2>
+        <h2>New Game Starting in: {newGameCountDown}</h2></>}
           <GameBoardRow>
-            <GameBoardSquare onClick={() => { onSquareClicked(0); }} data-square="0">{gameBoard.board[0]}</GameBoardSquare>
-            <GameBoardSquare onClick={() => { onSquareClicked(1); }} data-square="1">{gameBoard.board[1]}</GameBoardSquare>
-            <GameBoardSquare onClick={() => { onSquareClicked(2); }} data-square="2">{gameBoard.board[2]}</GameBoardSquare>
+            <GameBoardSquare onClick={() => { onSquareClicked(0); }} data-square="0">{gameBoard?.board[0]}</GameBoardSquare>
+            <GameBoardSquare onClick={() => { onSquareClicked(1); }} data-square="1">{gameBoard?.board[1]}</GameBoardSquare>
+            <GameBoardSquare onClick={() => { onSquareClicked(2); }} data-square="2">{gameBoard?.board[2]}</GameBoardSquare>
           </GameBoardRow>
           <GameBoardRow>
-            <GameBoardSquare onClick={() => { onSquareClicked(3); }} data-square="3">{gameBoard.board[3]}</GameBoardSquare>
-            <GameBoardSquare onClick={() => { onSquareClicked(4); }} data-square="4">{gameBoard.board[4]}</GameBoardSquare>
-            <GameBoardSquare onClick={() => { onSquareClicked(5); }} data-square="5">{gameBoard.board[5]}</GameBoardSquare>
+            <GameBoardSquare onClick={() => { onSquareClicked(3); }} data-square="3">{gameBoard?.board[3]}</GameBoardSquare>
+            <GameBoardSquare onClick={() => { onSquareClicked(4); }} data-square="4">{gameBoard?.board[4]}</GameBoardSquare>
+            <GameBoardSquare onClick={() => { onSquareClicked(5); }} data-square="5">{gameBoard?.board[5]}</GameBoardSquare>
           </GameBoardRow>
           <GameBoardRow>
-            <GameBoardSquare onClick={() => { onSquareClicked(6); }} data-square="6">{gameBoard.board[6]}</GameBoardSquare>
-            <GameBoardSquare onClick={() => { onSquareClicked(7); }} data-square="7">{gameBoard.board[7]}</GameBoardSquare>
-            <GameBoardSquare onClick={() => { onSquareClicked(8); }} data-square="8">{gameBoard.board[8]}</GameBoardSquare>
+            <GameBoardSquare onClick={() => { onSquareClicked(6); }} data-square="6">{gameBoard?.board[6]}</GameBoardSquare>
+            <GameBoardSquare onClick={() => { onSquareClicked(7); }} data-square="7">{gameBoard?.board[7]}</GameBoardSquare>
+            <GameBoardSquare onClick={() => { onSquareClicked(8); }} data-square="8">{gameBoard?.board[8]}</GameBoardSquare>
           </GameBoardRow>
         </Board>
         <SideBarRight>

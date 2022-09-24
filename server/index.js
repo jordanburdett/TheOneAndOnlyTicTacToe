@@ -10,9 +10,9 @@ const io = require("socket.io")(server, {
 const {client} = require('./logic/databaseConnection');
 const { JSDOM } = require("jsdom");
 const { window } = new JSDOM();
-const { startGameLoop } = require("./logic/gameloop");
 const { checkForSocketInQueue } = require("./logic/Helpers");
-const { addSocketIdToQueueX, getQueues, removeSocketIdFromY, addSocketIdToQueueY, removeSocketIdFromX, getGameBoard, databaseCleanup, updateGameBoard } = require('./Controllers/DatabaseController');
+const { addSocketIdToQueueX, getQueues, removeSocketIdFromY, addSocketIdToQueueY, removeSocketIdFromX, getGameBoard, databaseCleanup, updateGameBoard, insertGameBoard } = require('./Controllers/DatabaseController');
+
 
 app.get('/', (req, res) => {
   res.send('<h1>Hello world</h1>');
@@ -152,7 +152,7 @@ io.on('connection', (socket) => {
     let queues = await getQueues();
 
 
-    console.log("queues.XQueue: " + queues.XQueue);
+    // Check for player 1 name inserted
     if (!gameBoard.player1 && queues.XQueue[0]?.name) {
       
       gameBoard.player1 = queues.XQueue[0].name;
@@ -163,6 +163,7 @@ io.on('connection', (socket) => {
       console.log("not ready to start the game");
     }
 
+    // check for player 2 name inserted
     if (!gameBoard.player2 && queues.YQueue[0]?.name) {
       gameBoard.player2 = queues.YQueue[0].name;
       gameBoard.player2SocketId = queues.YQueue[0].socketId;
@@ -171,6 +172,7 @@ io.on('connection', (socket) => {
       console.log("not ready to start the game");
     }
 
+    // if both players have been added to the game we can allow them to play.
     if (gameBoard.player1 && gameBoard.player2) {
       gameBoard.gameHasStarted = true;
       
@@ -200,7 +202,85 @@ io.on('connection', (socket) => {
     console.log(gameBoard);
 
   })
+
   // receive users play -- emit to everyone a new board
+  socket.on("game board play", async (gameBoard) => {
+    console.log("gameboard play submitted with this gameboard", gameBoard);
+    // check for valid
+
+    // check for win
+    if (gameBoard.board[0] === 'X' && gameBoard[1] === 'X' && gameBoard[2] === "X"
+        || gameBoard.board[3] === 'X' && gameBoard.board[4] === 'X' && gameBoard.board[5] === 'X'
+        || gameBoard.board[6] === 'X' && gameBoard.board[7] === 'X' && gameBoard.board[8] === 'X'
+        || gameBoard.board[0] === 'X' && gameBoard.board[3] === 'X' && gameBoard.board[6] === 'X'
+        || gameBoard.board[1] === 'X' && gameBoard.board[4] === 'X' && gameBoard.board[7] === 'X'
+        || gameBoard.board[2] === 'X' && gameBoard.board[5] === 'X' && gameBoard.board[8] === 'X'
+        || gameBoard.board[0] === 'X' && gameBoard.board[4] === 'X' && gameBoard.board[8] === 'X'
+        || gameBoard.board[2] === 'X' && gameBoard.board[4] === 'X' && gameBoard.board[6] === 'X') {
+    
+          // player 1 wins
+          gameBoard.currentTurnSocketId = null;
+          gameBoard.winner = gameBoard.player1SocketId;
+          gameBoard.hasWinner = true;
+          console.log("WE HAVE A WINNER!");
+          await updateGameBoard(gameBoard);
+
+          io.emit("game board update", gameBoard);
+
+          for (let i = 15; i > 0; i--) {
+            io.emit("get new game countdown", i);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+          await insertGameBoard();
+          gameBoard = await getGameBoard();
+          io.emit("game board update", gameBoard);
+
+          return;
+    }
+
+    // check for win
+    if (gameBoard.board[0] === 'O' && gameBoard[1] === 'O' && gameBoard[2] === "O"
+        || gameBoard.board[3] === 'O' && gameBoard.board[4] === 'O' && gameBoard.board[5] === 'O'
+        || gameBoard.board[6] === 'O' && gameBoard.board[7] === 'O' && gameBoard.board[8] === 'O'
+        || gameBoard.board[0] === 'O' && gameBoard.board[3] === 'O' && gameBoard.board[6] === 'O'
+        || gameBoard.board[1] === 'O' && gameBoard.board[4] === 'O' && gameBoard.board[7] === 'O'
+        || gameBoard.board[2] === 'O' && gameBoard.board[5] === 'O' && gameBoard.board[8] === 'O'
+        || gameBoard.board[0] === 'O' && gameBoard.board[4] === 'O' && gameBoard.board[8] === 'O'
+        || gameBoard.board[2] === 'O' && gameBoard.board[4] === 'O' && gameBoard.board[6] === 'O') {
+    
+          // player 2 wins
+          gameBoard.currentTurnSocketId = null;
+          gameBoard.winner = gameBoard.player2SocketId;
+          gameBoard.hasWinner = true;
+          console.log("WE HAVE A WINNER!");
+          await updateGameBoard(gameBoard);
+
+          io.emit("game board update", gameBoard);
+
+          for (let i = 5; i > 0; i--) {
+            io.emit("get new game countdown", i);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+          await insertGameBoard();
+          gameBoard = await getGameBoard();
+          io.emit("game board update", gameBoard);
+
+          return;
+          
+    }
+
+    // emit to all the new gameboard
+    if (gameBoard.currentTurnSocketId === gameBoard.player1SocketId) {
+      gameBoard.currentTurnSocketId = gameBoard.player2SocketId;
+    }
+    else {
+      gameBoard.currentTurnSocketId = gameBoard.player1SocketId;
+    }
+
+    await updateGameBoard(gameBoard);
+
+    io.emit("game board update", gameBoard);
+  })
 
   /**** 
    * Queue
